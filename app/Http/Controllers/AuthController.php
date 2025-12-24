@@ -10,45 +10,56 @@ use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
-    // 1. REGISTER (Daftar Akun Baru)
     public function register(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required',
-            'email' => 'required|email|unique:users',
-            'password' => 'required|min:6',
-        ]);
+    $validator = Validator::make($request->all(), [
+        'name' => 'required|string|max:255',
+        'email' => 'required|string|email|max:255|unique:users',
+        'password' => 'required|string|min:8',
+    ]);
 
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
-        }
+    if ($validator->fails()) {
+        return response()->json(['errors' => $validator->errors()], 422);
+    }
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+    $user = User::create([
+        'name' => $request->name,
+        'email' => $request->email,
+        'password' => Hash::make($request->password),
+    ]);
 
-        // Opsional: Langsung login setelah register (dapat token)
-        $token = Auth::guard('api')->login($user);
+    // LANGSUNG BUAT TOKEN BIAR AUTO-LOGIN
+    $token = $user->createToken('auth_token')->plainTextToken;
 
-        return response()->json([
-            'message' => 'Registrasi Berhasil',
-            'user' => $user,
-            'access_token' => $token
-        ], 201);
+    return response()->json([
+        'message' => 'User created successfully',
+        'access_token' => $token, // Ini ditangkap JS untuk Auto Login
+        'token_type' => 'Bearer',
+        'user' => $user
+    ]);
     }
 
     // 2. LOGIN
     public function login(Request $request)
     {
-        $credentials = $request->only('email', 'password');
-
-        if (! $token = Auth::guard('api')->attempt($credentials)) {
-            return response()->json(['error' => 'Email atau Password Salah'], 401);
+        if (!Auth::attempt($request->only('email', 'password'))) {
+            return response()->json([
+                'message' => 'Login details are invalid'
+            ], 401);
         }
 
-        return $this->respondWithToken($token);
+        $user = User::where('email', $request['email'])->firstOrFail();
+
+        // BUAT TOKEN BARU
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        // KEMBALIKAN TOKEN KE FRONTEND
+        return response()->json([
+            'message' => 'Hi ' . $user->name,
+            'access_token' => $token, // Bisa pakai access_token
+            'token_type' => 'Bearer',
+            'token' => $token, // SAYA TAMBAHKAN INI BIAR JS DI ATAS JALAN
+        ]);
     }
 
     // 3. ME (Cek Profil Sendiri - Butuh Token)

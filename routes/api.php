@@ -2,42 +2,40 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AssetController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\TransactionController; // <--- JANGAN LUPA INI
+use App\Http\Controllers\AssetController;
+use App\Http\Controllers\TransactionController;
 
-// ==========================================
-// 1. ZONA PUBLIC (Boleh Masuk Tanpa Token)
-// ==========================================
-
-// Auth
+// =========================================================================
+// 1. PUBLIC ROUTES (Pintu Gerbang - Tanpa Token)
+// =========================================================================
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
-// Asset (Hanya BACA)
-Route::get('/assets', [AssetController::class, 'index']);
-// UBAH: {id} jadi {uuid} agar sesuai controller
-Route::get('/assets/{uuid}', [AssetController::class, 'show']);
+// =========================================================================
+// 2. PROTECTED ROUTES (Area Member - Wajib Token)
+// =========================================================================
+Route::middleware('auth:sanctum')->group(function () {
 
+    // TAMBAHKAN INI:
+    Route::get('/assets/live-prices', [AssetController::class, 'getLivePrices']);
 
-// ==========================================
-// 2. ZONA PROTECTED (WAJIB Token / Login)
-// ==========================================
+    // Cek User Profile
+    Route::get('/user', function (Request $request) {
+        return $request->user();
+    });
 
-Route::middleware('auth:api')->group(function () {
-
-    // Auth
-    Route::get('/me', [AuthController::class, 'me']);
+    // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // Asset (CRUD)
+    // --- MANAJEMEN ASET (CRUD) ---
+    // Menggunakan POST untuk update {id} agar upload gambar (logo) lebih stabil
+    Route::get('/assets', [AssetController::class, 'index']);
     Route::post('/assets', [AssetController::class, 'store']);
-    // UBAH: {id} jadi {uuid}
-    Route::post('/assets/{uuid}', [AssetController::class, 'update']);
-    Route::delete('/assets/{uuid}', [AssetController::class, 'destroy']);
+    Route::get('/assets/{id}', [AssetController::class, 'show']);
+    Route::post('/assets/{id}', [AssetController::class, 'update']);
+    Route::delete('/assets/{id}', [AssetController::class, 'destroy']);
 
-    // --- FITUR BARU: TRANSAKSI (JUAL/BELI) ---
-    // Route ini otomatis mengurangi/menambah stok
+    // --- TRANSAKSI ---
     Route::post('/transactions', [TransactionController::class, 'store']);
-
 });

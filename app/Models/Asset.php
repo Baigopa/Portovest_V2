@@ -12,6 +12,7 @@ class Asset extends Model
 
     // Pastikan semua kolom ini bisa diisi
     protected $fillable = [
+        'user_id',
         'uuid',
         'name',
         'asset_type',
